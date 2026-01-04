@@ -4,25 +4,25 @@ import io
 import zipfile
 import re
 
-# 1. 強力清洗函數：處理所有 Excel 命名地雷
+# 強力清洗函數：處理所有 Excel 命名地雷
 def clean_sheet_name(name):
-    # 移除非法字元 \ / ? * : [ ] 並替換為底線
+    # 1. 移除非法字元 \ / ? * : [ ] 並替換為底線
     clean = re.sub(r'[\\/*?:\[\]]', "_", str(name))
-    # 移除開頭或結尾的單引號 (Excel 也不喜歡)
+    # 2. 移除開頭或結尾的單引號
     clean = clean.strip("'")
-    # 限制長度 31 字元 (Excel 極限)
+    # 3. 限制長度 31 字元 (Excel 極限)
     clean = clean[:31]
-    # 如果清洗後變空值，給個預設名
+    # 4. 如果清洗後變空值，給個預設名
     return clean if clean else "Sheet_Split"
 
 st.set_page_config(page_title="Excel 自動切割助手", page_icon="✂️")
-st.title("📊 Excel 自動切割助手 (最終修補版)")
+st.title("📊 Excel 自動切割助手 (強力防錯版)")
 
-uploaded_file = st.file_uploader("步驟一：上傳檔案", type=["xlsx"])
+uploaded_file = st.file_uploader("第一步：上傳檔案", type=["xlsx"])
 
 if uploaded_file:
     df = pd.read_excel(uploaded_file)
-    split_col = st.selectbox("步驟二：選擇切割欄位", df.columns)
+    split_col = st.selectbox("第二步：選擇切割欄位", df.columns)
     mode = st.radio("選擇輸出方式", ["分割到不同工作表 (Sheets)", "分割到不同檔案 (ZIP打包)"])
 
     if st.button("🚀 開始執行自動切割"):
@@ -31,10 +31,10 @@ if uploaded_file:
             if mode == "分割到不同工作表 (Sheets)":
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
                     for category, data in df.groupby(split_col):
-                        # --- 這裡使用清洗後的名稱 ---
+                        # --- 關鍵修正：套用清洗函數 ---
                         safe_name = clean_sheet_name(category)
                         data.to_excel(writer, sheet_name=safe_name, index=False)
-                st.success("切割完成！非法字元已自動處理。")
+                st.success("切割成功！特殊符號已自動替換。")
                 st.download_button("📥 下載 Excel 成果", output.getvalue(), "split_result.xlsx")
 
             else:
