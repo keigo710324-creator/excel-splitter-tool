@@ -25,7 +25,7 @@ uploaded_file = st.file_uploader("請選擇 Excel 檔案 (.xlsx)", type=["xlsx"]
 
 if uploaded_file:
     df = pd.read_excel(uploaded_file)
-    st.success(f"成功讀取檔案！")
+    st.success(f"成功讀取檔案！共有 {len(df)} 筆資料。")
 
     # --- 步驟二：設定參數 ---
     st.header("步驟二：設定參數")
@@ -40,8 +40,8 @@ if uploaded_file:
     if st.button("🚀 開始執行自動切割"):
         output = io.BytesIO()
         
-        if mode == "分割到不同工作表 (Sheets)":
-            try:
+        try:
+            if mode == "分割到不同工作表 (Sheets)":
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
                     for category, data in df.groupby(split_column):
                         # 使用清理過的名稱
@@ -50,18 +50,19 @@ if uploaded_file:
                 
                 st.success("切割完成！")
                 st.download_button("📥 下載 Excel 成果", data=output.getvalue(), file_name=f"split_by_{split_column}.xlsx")
-            except Exception as e:
-                st.error(f"發生錯誤：{e}")
 
-        elif mode == "分割到不同檔案 (ZIP打包)":
-            zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
-                for category, data in df.groupby(split_column):
-                    excel_buffer = io.BytesIO()
-                    data.to_excel(excel_buffer, index=False)
-                    # 檔案名稱也進行清理以防萬一
-                    file_name = f"{clean_sheet_name(category)}.xlsx"
-                    zip_file.writestr(file_name, excel_buffer.getvalue())
-            
-            st.success("檔案已成功打包成 ZIP！")
-            st.download_button("📥 下載所有檔案 (ZIP)", data=zip_buffer.getvalue(), file_name="split_files.zip")
+            elif mode == "分割到不同檔案 (ZIP打包)":
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+                    for category, data in df.groupby(split_column):
+                        excel_buffer = io.BytesIO()
+                        data.to_excel(excel_buffer, index=False)
+                        # 檔案名稱也進行清理
+                        safe_name = clean_sheet_name(category)
+                        zip_file.writestr(f"{safe_name}.xlsx", excel_buffer.getvalue())
+                
+                st.success("檔案已成功打包成 ZIP！")
+                st.download_button("📥 下載所有檔案 (ZIP)", data=zip_buffer.getvalue(), file_name="split_files.zip")
+        except Exception as e:
+            st.error(f"執行時發生錯誤：{e}")
+            st.info("提示：請檢查選擇的欄位內容是否包含過多特殊字元。")
